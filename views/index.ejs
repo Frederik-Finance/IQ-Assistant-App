@@ -6,13 +6,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IQ Assistant</title>
- 
 </head>
 <body>
 
 <div style="padding-top: 50px;"></div>
 <input type="hidden" id="isAuthenticated" value="<%= locals.isAuthenticated %>">
-
 
 <h1 class="text-4xl">Assessment Helper App</h1>
 
@@ -23,44 +21,47 @@
 <% } %>
 
 <div class="text-green-600 text-2xl font-bold mb-4 text-center" id="questions-left">
-    Questions left: <span>50</span>
+    Questions left: <span>0</span>
 </div>
-
 
 <div class="text-navy-700 text-xl font-bold mb-4 text-center">
     Question Deductions: <span id="deductions-count">0</span> 
 </div>
 
-<style>
-    .text-navy-700 {
-        color: #001F3F; /* This is a navy blue shade */
-    }
-</style>
-
-
-
 <div id="drop-area" class="p-10 text-2xl border-4 border-dashed border-gray-400 rounded-lg text-center hover:bg-gray-100 cursor-pointer w-3/4 mx-auto my-10 h-[24rem]">
     Drop or Paste screenshot
 </div>
 
+<div id="loading" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="loader"></div>
+        <p>Processing...</p>
+    </div>
+</div>
+
+
+<textarea id="answer" class="mt-5 w-full p-3 h-40 border rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="Answer will appear here..."></textarea>
+
 <style>
+    /* General Styles */
+    .text-navy-700 {
+        color: #001F3F; /* Navy blue shade */
+    }
+
+    /* Drop Area Styles */
    #drop-area img {
-    max-width: 150px; /* Adjust as per your requirement */
-    max-height: 150px; /* Adjust as per your requirement */
-    margin: 10px;
-    vertical-align: middle;
-  }
-</style>
+        max-width: 150px;
+        max-height: 150px;
+        margin: 10px;
+        vertical-align: middle;
+    }
 
-
-
-<input type="text" id="answer" class="mt-5 w-full p-3 border rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="Answer will appear here...">
-<style>
+    /* Button Group Styles */
     .btn-group {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 16px;  /* Use gap to set space between buttons */
+        gap: 16px;
         margin-top: 2rem;
     }
 
@@ -69,7 +70,7 @@
         align-items: center;
         justify-content: center;
         padding: 12px 24px;
-        width: 280px;  /* Fixed width for all buttons */
+        width: 280px;
         border-radius: 8px;
         font-size: 16px;
         text-align: center;
@@ -80,17 +81,36 @@
     .bg-green-500:hover, .bg-blue-500:hover, .bg-red-500:hover {
         filter: brightness(0.9);
     }
+
+     /* Answer Box Styles */
+    #answer {
+        height: 100px;
+        white-space: pre-wrap;  /* This ensures that whitespace in the content is preserved */
+    word-wrap: break-word; /* This ensures that long words will wrap */
+    }
+
+    .loader {
+    border: 10px solid #f3f3f3;
+    border-top: 10px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 </style>
 
 <div class="btn-group">
     <div class="btn bg-green-500 text-white" id="submit-btn">
         Submit
     </div>
-    <div class="btn bg-blue-500 text-white" id="add-text-btn">
-        Add Screenshot
-    </div>
     <div class="btn bg-red-500 text-white" id="delete-last-btn">
-        Delete Last
+        Delete Screenshots
     </div>
 </div>
 
@@ -167,6 +187,11 @@ function handleFiles(files) {
             reader.onload = function (e) {
                 let imageSource = e.target.result;
                 displayImage(imageSource);
+
+                // Automatically append to the screenshots array
+                screenshots.push(imageSource);
+                deductions++;
+                updateDeductionsCount();
             }
             reader.readAsDataURL(file);
         }
@@ -218,26 +243,29 @@ addScreenshotBtn.addEventListener('click', () => {
 
 
 
+function handleDeleteLastScreenshot() {
+    if (screenshots.length > 0) {
+        screenshots.pop();
+        deductions--;
+        updateDeductionsCount();
+
+        // Remove the last image from the dropArea
+        const imagesInDropArea = dropArea.querySelectorAll('img');
+        if (imagesInDropArea.length > 0) {
+            imagesInDropArea[imagesInDropArea.length - 1].remove();
+        }
+    }
+
+    // If there are no screenshots left, update the dropArea text
+    if (screenshots.length === 0) {
+        dropArea.innerHTML = "Drop or Paste screenshot";
+    }
+}
+
 deleteLastBtn.addEventListener('click', () => {
-    checkAuthThenExecute(async () => {
-        if (screenshots.length > 0) {
-            screenshots.pop();
-             deductions--;
-            updateDeductionsCount();
-            
-            // Remove the last image from the dropArea
-            const imagesInDropArea = dropArea.querySelectorAll('img');
-            if (imagesInDropArea.length > 0) {
-                imagesInDropArea[imagesInDropArea.length - 1].remove();
-            }
-        }
-        
-        // If there are no screenshots left, update the dropArea text
-        if (screenshots.length === 0) {
-            dropArea.innerHTML = "Drop or Paste screenshot";
-        }
-    });
+    checkAuthThenExecute(handleDeleteLastScreenshot);
 });
+
 
 
 
@@ -250,6 +278,8 @@ async function fetchBlobFromURL(blobURL) {
 
 submitBtn.addEventListener('click', async () => {
     checkAuthThenExecute(async () => {
+        document.getElementById('loading').style.display = 'block'; // Show the loading bar
+
         // Add current screenshot if there's any
         addScreenshot();
 
@@ -291,7 +321,10 @@ submitBtn.addEventListener('click', async () => {
         } catch (error) {
             console.error('Error sending screenshots:', error);
         } finally {
+                    document.getElementById('loading').style.display = 'none'; // Hide the loading bar
             screenshots = []; // Reset screenshots array
+            handleDeleteLastScreenshot()
+
         }
     });
 });
@@ -318,7 +351,7 @@ function displayImage(source) {
     imgElement.className = "max-w-full max-h-full";
 
     dropArea.appendChild(imgElement);
-    document.getElementById('answer').value = "Screenshot received!";
+    document.getElementById('answer').textContent = "Screenshot received! Please click 'Submit' when ready.";
 }
 
 

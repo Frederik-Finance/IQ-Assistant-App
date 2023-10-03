@@ -17,17 +17,6 @@ dropArea.addEventListener('drop', (e) => {
     });
 });
 
-
-
-
-
-
-
-
-
-
-
-
 function handleFiles(files) {
     if (files.length > 0) {
         let file = files[0];
@@ -89,15 +78,21 @@ addScreenshotBtn.addEventListener('click', () => {
 
 deleteLastBtn.addEventListener('click', () => {
     if (screenshots.length > 0) {
-        screenshots.pop();
-    }
+        const lastScreenshotURL = screenshots.pop();
 
-    if (screenshots.length === 0) {
-        dropArea.innerHTML = "Drop or Paste screenshot";
+        // If the removed screenshot is currently displayed, revert the dropArea content
+        const displayedImage = dropArea.querySelector('img');
+        if (displayedImage && displayedImage.src === lastScreenshotURL) {
+            dropArea.innerHTML = "Drop or Paste screenshot";
+        }
     } else {
-        displayImage(screenshots[screenshots.length - 1]);
+        // If there were no screenshots to begin with, ensure dropArea content is set correctly
+        dropArea.innerHTML = "Drop or Paste screenshot";
     }
 });
+
+
+
 
 
 submitBtn.addEventListener('click', () => {

@@ -13,7 +13,77 @@
     </div>
     
     <h2 class="text-2xl mb-3">Request Access on Telegram</h2>
-    <p class="mb-4">If you have any questions or wish to purchase access, drop us a message on Telegram. We will process your request ASAP</p>
+<style>
+    .price-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1rem;
+    }
+
+    .price-table th, .price-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .price-table th {
+        background-color: #f2f2f2;
+        color: black;
+    }
+
+    .price-table tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    .discount {
+        color: #32a852;
+    }
+</style>
+
+<p>If you have any questions or wish to purchase access, drop us a message on Telegram. We will process your request ASAP. Generally, pricing is structured like this:</p>
+
+<table class="price-table">
+    <thead>
+        <tr>
+            <th>Questions</th>
+            <th>Price</th>
+            <th>Discount</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1 qn</td>
+            <td>1 eur</td>
+            <td>-</td>
+        </tr>
+        <tr>
+            <td>10 qns</td>
+            <td>9.5 eur</td>
+            <td class="discount">5% off</td>
+        </tr>
+        <tr>
+            <td>20 qns</td>
+            <td>18 eur</td>
+            <td class="discount">10% off</td>
+        </tr>
+        <tr>
+            <td>30 qns</td>
+            <td>25.5 eur</td>
+            <td class="discount">15% off</td>
+        </tr>
+        <tr>
+            <td>40 qns</td>
+            <td>33.20 eur</td>
+            <td class="discount">17% off</td>
+        </tr>
+        <tr>
+            <td>50 qns</td>
+            <td>40 eur</td>
+            <td class="discount">20% off</td>
+        </tr>
+    </tbody>
+</table>
+
     <a href="https://t.me/CryptoFreddy123" target="_blank" class="bg-blue-500 text-white p-2 rounded-md">Message on Telegram</a>
 </section>
 <%- include('partials/footer') -%>

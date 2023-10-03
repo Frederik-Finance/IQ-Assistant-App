@@ -177,11 +177,32 @@ async function sendToOpenAI(fullText) {
             max_tokens: 2000
         });
 
-        const generated_text = chatCompletion.choices[0].message['content'].trim();
-        return generated_text
+        const generatedText = chatCompletion.choices[0].message['content'].trim();
+        return generatedText
 
     } catch (error) {
         console.error('Error:', error.response ? error.response.data : error.message);
+    }
+}
+
+
+async function appendHistory(userEmail, question, answer) {
+    try {
+        const updateResult = await User.findOneAndUpdate(
+            { userEmail: userEmail },
+            { $push: { history: { question: question, answer: answer } } },
+            { new: true } // This option returns the modified document rather than the original
+        );
+
+        if (!updateResult) {
+            console.log(`User with email ${userEmail} not found.`);
+            return null;
+        }
+
+        return updateResult;
+    } catch (error) {
+        console.error("Error updating user history:", error);
+        throw error;
     }
 }
 
@@ -205,15 +226,18 @@ router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async
         console.log(fullText)
 
 
-        const generated_text = await sendToOpenAI(fullText)
-        console.log(generated_text)
+        const generatedText = await sendToOpenAI(fullText)
+        console.log(generatedText)
+
+
 
 
 
         // if it was successful decrement the user questions
         decrementUserQuestions(userEmail, userDeductions)
+        appendHistory(userEmail, fullText, generatedText)
 
-        res.status(200).json({ success: true, answer: generated_text });
+        res.status(200).json({ success: true, answer: generatedText });
     } catch (error) {
         console.error("Error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });

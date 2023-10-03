@@ -10,7 +10,17 @@ const userSchema = new Schema({
     availableQuestions: {
         type: Number,
         default: 0
-    }
+    },
+    history: [{
+        question: {
+            type: String,
+            required: true
+        },
+        answer: {
+            type: String,
+            required: true
+        }
+    }]
 });
 
 const User = mongoose.model('User', userSchema);
