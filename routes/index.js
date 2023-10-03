@@ -161,7 +161,7 @@ const detectText = async (screenshot) => {
 async function sendToOpenAI(fullText) {
     try {
         const chatCompletion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",  // Update model from "gpt-4" to "gpt-3.5-turbo" or keep as "gpt-4" if it's available
+            model: "gpt-4",  // Update model from "gpt-4" to "gpt-3.5-turbo" or keep as "gpt-4" if it's available
             messages: [
                 {
                     "role": "system",
