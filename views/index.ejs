@@ -55,8 +55,6 @@
 
 
 <input type="text" id="answer" class="mt-5 w-full p-3 border rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="Answer will appear here...">
-
-
 <style>
     .btn-group {
         display: flex;
@@ -79,7 +77,7 @@
         transition: background-color 0.3s;
     }
 
-    .bg-green-500:hover, .bg-blue-500:hover, .bg-gray-500:hover, .bg-red-500:hover {
+    .bg-green-500:hover, .bg-blue-500:hover, .bg-red-500:hover {
         filter: brightness(0.9);
     }
 </style>
@@ -91,12 +89,6 @@
     <div class="btn bg-blue-500 text-white" id="add-text-btn">
         Add Screenshot
     </div>
-</div>
-
-<div class="btn-group">
-    <div class="btn bg-gray-500 text-white" id="reset-btn">
-        Reset
-    </div>
     <div class="btn bg-red-500 text-white" id="delete-last-btn">
         Delete Last
     </div>
@@ -105,21 +97,20 @@
 
 <script>
 
-// In the same <script> tag, after the createUser function:
+const deductionsCountEl = document.getElementById('deductions-count');
+let deductions = 0;
 
 async function fetchAvailableQuestions() {
     try {
-        const userEmail = document.getElementById('userEmail').value;
-        const response = await fetch(`/get-questions?userEmail=${userEmail}`);
+        const response = await fetch('/get-questions');
 
         if (!response.ok) {
             throw new Error('Failed to fetch available questions');
         }
 
         const data = await response.json();
-        const questionsLeftEl = document.querySelector('.text-green-600.text-2xl.font-bold.mb-4.text-center');
-        questionsLeftEl.innerHTML = `Questions left: ${data.availableQuestions}`;
-
+        questionsLeftEl.textContent = data.availableQuestions;
+        
     } catch (error) {
         console.error('Error:', error.message);
     }
@@ -128,24 +119,12 @@ async function fetchAvailableQuestions() {
 
 
 
-
-
-
-const deductionsCountEl = document.getElementById('deductions-count');
-let questionsLeft = 50; // Assuming starting questions are 50
-let deductions = 0;
-
 function updateDeductionsCount() {
     deductionsCountEl.innerText = deductions;
 }
 
-function updateQuestionsLeftCount() {
-    const questionsLeftEl = document.querySelector('.text-green-600.text-2xl.font-bold.mb-4.text-center');
-    questionsLeft -= deductions;
-    questionsLeftEl.innerHTML = `Questions left: ${questionsLeft}`;
-    deductions = 0;
-    updateDeductionsCount();
-}
+
+
 
 const isAuthenticated = document.getElementById('isAuthenticated').value === 'true';
 
@@ -221,29 +200,21 @@ let screenshots = []; // This array will act as the browser's folder to store sc
 
 function addScreenshot() {
     const displayedImage = dropArea.querySelector('img');
-
     
-
-
     if (displayedImage) {
         const currentScreenshotURL = displayedImage.src;
         
-        // Check if screenshot is already in the array
-        if (!screenshots.includes(currentScreenshotURL)) {
-            screenshots.push(currentScreenshotURL);
-            deductions++;
-            updateDeductionsCount();
-        } else {
-            console.log("This screenshot is already added.");
-        }
+        screenshots.push(currentScreenshotURL);
+        deductions++;
+        updateDeductionsCount();
     }
 }
+
 
 
 addScreenshotBtn.addEventListener('click', () => {
     checkAuthThenExecute(addScreenshot);
 });
-
 
 
 
@@ -270,19 +241,31 @@ deleteLastBtn.addEventListener('click', () => {
 
 
 
+async function fetchBlobFromURL(blobURL) {
+    const response = await fetch(blobURL);
+    return await response.blob();
+}
+
+
+
 submitBtn.addEventListener('click', async () => {
     checkAuthThenExecute(async () => {
-        addScreenshot()
-        console.log(screenshots);
+        // Add current screenshot if there's any
+        addScreenshot();
 
-        // Convert data URLs to Blob
-        const blobs = screenshots.map(dataURLToBlob);
+        // Fetch blobs from the blob URLs
+        const blobs = await Promise.all(screenshots.map(fetchBlobFromURL));
 
-        // Use fetch API to send blobs to server
+        // Create formData with the blobs
         const formData = new FormData();
         blobs.forEach((blob, index) => {
             formData.append('screenshots', blob, `screenshot${index}.png`);
         });
+
+        // For debugging: Log each formData entry
+        for (let [name, value] of formData.entries()) {
+            console.log(name, value);
+        }
 
         try {
             const response = await fetch('/submit-images', {
@@ -291,19 +274,28 @@ submitBtn.addEventListener('click', async () => {
             });
 
             if (response.ok) {
-                console.log('Screenshots sent successfully.');
-                            updateQuestionsLeftCount();
+                const responseData = await response.json();
+                console.log(responseData)
+                document.getElementById('answer').value = responseData.answer || 'Received an unexpected response from the server.';
+                
+                // Reset deductions
+                deductions = 0
+                updateDeductionsCount()
 
+                // get remaining
+                fetchAvailableQuestions()
+                console.log('Screenshots sent successfully.');
             } else {
                 console.error('Error sending screenshots:', response.statusText);
             }
         } catch (error) {
             console.error('Error sending screenshots:', error);
         } finally {
-            screenshots = []
+            screenshots = []; // Reset screenshots array
         }
     });
 });
+
 
 
 

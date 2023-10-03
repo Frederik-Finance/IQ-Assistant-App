@@ -1,17 +1,18 @@
-var router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const { requiresAuth } = require('express-openid-connect');
 const multer = require('multer');
-const upload = multer();
-
 const vision = require('@google-cloud/vision');
-const openai = require('openai');
-const User = require('../models/user.js')
-
+const User = require('../models/user.js');
+const { OpenAI } = require('openai');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
-const mongoose = require('mongoose');
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
-
+// Configure MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -22,9 +23,12 @@ const API_KEY_VISION = process.env.API_KEY_VISION;
 const API_KEY_GPT4 = process.env.API_KEY_GPT4;
 const VISION_API_URL = `https://vision.googleapis.com/v1/images:annotate?key=${API_KEY_VISION}`;
 
-const client = new vision.ImageAnnotatorClient();
+// Configure OpenAI API
+const openai = new OpenAI({
+    apiKey: API_KEY_GPT4
+})
 
-openai.apiKey = API_KEY_GPT4;
+
 
 
 /**
@@ -129,35 +133,41 @@ router.post('/create-user', requiresAuth(), async (req, res) => {
 
 
 
+const detectText = async (screenshot) => {
+    const encodedImage = screenshot.buffer.toString('base64');
 
-router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async (req, res, next) => {
+    const body = {
+        requests: [
+            {
+                image: { content: encodedImage },
+                features: [{ type: 'TEXT_DETECTION' }]
+            }
+        ]
+    };
 
+    const response = await fetch(VISION_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+
+    const data = await response.json();
+    const results = data.responses?.[0]?.textAnnotations || [];
+    return results[0]?.description || '';
+};
+
+
+async function sendToOpenAI(fullText) {
     try {
-        const userEmail = req.oidc.user.email
-
-        // console.log(userEmail)
-        let fullText = '';
-        let userDeductions = 0
-
-        // Iterate over each image and extract text
-        console.log(req.files.screenshots)
-
-        for (const image of req.files.screenshots) {
-            const [result] = await client.textDetection(image.data);
-            const detections = result.textAnnotations;
-            const detectedText = detections.length ? detections[0].description : "";
-            fullText += detectedText + '\n';
-            userDeductions++
-
-        }
-
-        // Send the concatenated text to ChatGPT
-        const response = await openai.ChatCompletion.create({
-            model: "gpt-4",
+        const chatCompletion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",  // Update model from "gpt-4" to "gpt-3.5-turbo" or keep as "gpt-4" if it's available
             messages: [
                 {
                     "role": "system",
-                    "content": "You are tasked with answering a Cognitive Aptitude Test (CCAT) question that assesses problem-solving, comprehension, application of information, and critical thinking. Provide the best and most logical answer based on the given information."
+                    // "content": "You are tasked with answering a Cognitive Aptitude Test question that assesses problem-solving, comprehension, application of information, and mathematical reasoning and critical thinking. Provide the best and most logical answer based on the given information."
+                    "content": "Your challenge is to address a question from a Cognitive Aptitude Test, designed to evaluate problem-solving capabilities, comprehension, application of knowledge, along with mathematical reasoning and critical thinking skills. Offer the most logical and compelling answer using the information provided. If an answer isn't discernible, please return 'no answer'."
+
                 },
                 {
                     "role": "user",
@@ -167,7 +177,38 @@ router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async
             max_tokens: 2000
         });
 
-        const generated_text = response.choices[0].message['content'].trim();
+        const generated_text = chatCompletion.choices[0].message['content'].trim();
+        return generated_text
+
+    } catch (error) {
+        console.error('Error:', error.response ? error.response.data : error.message);
+    }
+}
+
+router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async (req, res, next) => {
+
+
+    try {
+        const userEmail = req.oidc.user.email
+
+
+        let fullText = '';
+        let userDeductions = 0
+
+        // Iterate over each image and extract text
+        for (const image of req.files) {
+            const detectedText = await detectText(image)
+            fullText += detectedText + '\n';
+            userDeductions++
+        }
+
+        console.log(fullText)
+
+
+        const generated_text = await sendToOpenAI(fullText)
+        console.log(generated_text)
+
+
 
         // if it was successful decrement the user questions
         decrementUserQuestions(userEmail, userDeductions)
