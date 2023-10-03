@@ -97,24 +97,34 @@ router.get('/profile', requiresAuth(), function (req, res, next) {
 });
 
 
-router.get('/get-questions', requiresAuth(), async (req, res) => {
+async function getAvailableQuestions(userEmail) {
     try {
-        const userEmail = req.oidc.user.email;
-
         if (!userEmail) {
-            return res.status(400).json({ message: 'userEmail query parameter is required.' });
+            throw new Error('userEmail parameter is required.');
         }
 
         const user = await User.findOne({ userEmail: userEmail });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
+            throw new Error('User not found.');
         }
 
-        return res.json({ userEmail: user.userEmail, availableQuestions: user.availableQuestions });
+        return user.availableQuestions;
     } catch (err) {
-        return res.status(500).json({ message: 'Internal Server Error', error: err.message });
+        console.error('Error:', err.message);
+        return -1;  // Returning -1 or any other sentinel value to indicate an error.
     }
+}
+
+router.get('/get-questions', requiresAuth(), async (req, res) => {
+    const userEmail = req.oidc.user.email;
+    const availableQuestions = await getAvailableQuestions(userEmail);
+
+    if (availableQuestions === -1) {
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+
+    return res.json({ userEmail: userEmail, availableQuestions: availableQuestions });
 });
 
 
@@ -207,35 +217,38 @@ async function appendHistory(userEmail, question, answer) {
 }
 
 router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async (req, res, next) => {
-
-
     try {
-        const userEmail = req.oidc.user.email
+        const userEmail = req.oidc.user.email;
+        const availableQuestions = await getAvailableQuestions(userEmail);
 
+        const numImages = req.files.length;
+        if (availableQuestions < numImages) {
+            return res.status(400).json({
+                success: false,
+                message: 'Not enough questions available',
+                availableQuestions: availableQuestions,
+                requiredQuestions: numImages
+            });
+        }
 
         let fullText = '';
-        let userDeductions = 0
+        let userDeductions = 0;
 
         // Iterate over each image and extract text
         for (const image of req.files) {
-            const detectedText = await detectText(image)
+            const detectedText = await detectText(image);
             fullText += detectedText + '\n';
-            userDeductions++
+            userDeductions++;
         }
 
-        console.log(fullText)
+        console.log(fullText);
 
+        const generatedText = await sendToOpenAI(fullText);
+        console.log(generatedText);
 
-        const generatedText = await sendToOpenAI(fullText)
-        console.log(generatedText)
-
-
-
-
-
-        // if it was successful decrement the user questions
-        decrementUserQuestions(userEmail, userDeductions)
-        appendHistory(userEmail, fullText, generatedText)
+        // If it was successful, decrement the user questions
+        decrementUserQuestions(userEmail, userDeductions);
+        appendHistory(userEmail, fullText, generatedText);
 
         res.status(200).json({ success: true, answer: generatedText });
     } catch (error) {
