@@ -192,6 +192,22 @@ dropArea.addEventListener('drop', (e) => {
 });
 
 
+
+
+
+function displayImage(source) {
+    const imgElement = document.createElement("img");
+    imgElement.src = source;
+    imgElement.alt = "Screenshot";
+    imgElement.className = "max-w-full max-h-full";
+
+    dropArea.appendChild(imgElement);
+    document.getElementById('answer').textContent = "Screenshot received! Please click 'Submit' when ready.";
+    
+    // Return the blob URL for the added screenshot
+    return source;
+}
+
 function handleFiles(files) {
     if (files.length > 0) {
         let file = files[0];
@@ -199,10 +215,11 @@ function handleFiles(files) {
             let reader = new FileReader();
             reader.onload = function (e) {
                 let imageSource = e.target.result;
-                displayImage(imageSource);
+                const addedSource = displayImage(imageSource);
 
-                // Automatically append to the screenshots array
-                screenshots.push(imageSource);
+                // Append the new screenshot blob URL to the screenshots array
+                screenshots.push(addedSource);
+
                 deductions++;
                 updateDeductionsCount();
             }
@@ -210,7 +227,6 @@ function handleFiles(files) {
         }
     }
 }
-
 
 document.body.addEventListener('paste', (e) => {
     let clipboardData = e.clipboardData || window.clipboardData;
@@ -226,10 +242,18 @@ document.body.addEventListener('paste', (e) => {
             let URLObj = window.URL || window.webkitURL;
             let source = URLObj.createObjectURL(blob);
 
-            displayImage(source);
+            const addedSource = displayImage(source);
+            
+            // Append the new screenshot blob URL to the screenshots array
+            screenshots.push(addedSource);
+
+            deductions++;
+                updateDeductionsCount();
         }
     }
 });
+
+
 
 
 
@@ -243,6 +267,7 @@ function addScreenshot() {
         const currentScreenshotURL = displayedImage.src;
         
         screenshots.push(currentScreenshotURL);
+        console.log(screenshots)
         deductions++;
         updateDeductionsCount();
     }
@@ -251,23 +276,17 @@ function addScreenshot() {
 
 
 
-
-
 function handleDeleteLastScreenshot() {
     if (screenshots.length > 0) {
-        screenshots.pop();
-        deductions--;
+        screenshots = []; // Reset the screenshots array to an empty state
+        deductions = 0;  // Reset deductions to 0
         updateDeductionsCount();
 
-        // Remove the last image from the dropArea
+        // Remove all images from the dropArea
         const imagesInDropArea = dropArea.querySelectorAll('img');
-        if (imagesInDropArea.length > 0) {
-            imagesInDropArea[imagesInDropArea.length - 1].remove();
-        }
-    }
+        imagesInDropArea.forEach(img => img.remove());
 
-    // If there are no screenshots left, update the dropArea text
-    if (screenshots.length === 0) {
+        // Update the dropArea text since there are no screenshots
         dropArea.innerHTML = "Drop or Paste screenshot";
     }
 }
@@ -275,7 +294,6 @@ function handleDeleteLastScreenshot() {
 deleteLastBtn.addEventListener('click', () => {
     checkAuthThenExecute(handleDeleteLastScreenshot);
 });
-
 
 
 
@@ -290,9 +308,7 @@ submitBtn.addEventListener('click', async () => {
     checkAuthThenExecute(async () => {
         document.getElementById('loading').style.display = 'block'; // Show the loading bar
 
-        // Add current screenshot if there's any
-        addScreenshot();
-
+    
         // Fetch blobs from the blob URLs
         const blobs = await Promise.all(screenshots.map(fetchBlobFromURL));
 
@@ -341,7 +357,6 @@ submitBtn.addEventListener('click', async () => {
 
 
 
-
 function dataURLToBlob(dataURL) {
     const byteString = atob(dataURL.split(',')[1]);
     const mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
@@ -354,15 +369,6 @@ function dataURLToBlob(dataURL) {
 }
 
 
-function displayImage(source) {
-    const imgElement = document.createElement("img");
-    imgElement.src = source;
-    imgElement.alt = "Screenshot";
-    imgElement.className = "max-w-full max-h-full";
-
-    dropArea.appendChild(imgElement);
-    document.getElementById('answer').textContent = "Screenshot received! Please click 'Submit' when ready.";
-}
 
 
 

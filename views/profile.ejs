@@ -2,9 +2,6 @@
 
 <h1 class="text-4xl mb-4">Welcome <%= user.nickname %></h1>
 
-<% if (user.picture) { %>
-    <img class="block py-3" src="<%= user.picture %>" width="300">
-<% } %>
 
 <!-- Telegram Section -->
 <section class="my-5">
@@ -12,7 +9,191 @@
         <strong>InfoBox:</strong> This service is in development. Text us on Telegram to gain access and to discuss pricing.
     </div>
     
-    <h2 class="text-2xl mb-3">Request Access on Telegram</h2>
+    <h2 class="text-2xl mb-3">Get Questions via Paypal</h2>
+
+
+<!-- Integration: Purchase Questions Form -->
+<style>
+    .center-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .center-container > * {
+        margin-bottom: 20px;
+    }
+
+    .big-number {
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .info-text {
+        font-size: 1.25rem;
+        font-weight: bold;
+        text-align: center;
+    }
+</style>
+
+<!-- Form Elements -->
+<div class="center-container">
+    <div class="text-navy-700 text-xl font-bold mb-4 text-center">
+        Note: Minimum of 5 questions need to be purchased.
+    </div>
+
+    <label for="questionsCount" class="info-text">Number of questions:</label>
+    <input type="number" id="questionsCount" min="5" value="5" required class="big-number">
+    <p class="info-text">Estimated price: <span id="estimatedPrice"></span> EUR</p>
+    <div id="paypal-button-container"></div>
+    <p id="result-message"></p>
+</div>
+
+<script>
+function calculatePrice(quantity) {
+    let price = 1; // default price for 1 question
+    
+    if (quantity >= 10 && quantity <= 19) {
+        price = 1 - 0.05; // 5% discount
+    } else if (quantity >= 20 && quantity <= 29) {
+        price = 1 - 0.10; // 10% discount
+    } else if (quantity >= 30 && quantity <= 39) {
+        price = 1 - 0.15; // 15% discount
+    } else if (quantity >= 40 && quantity <= 49) {
+        price = 1 - 0.17; // 17% discount
+    } else if (quantity >= 50) {
+        price = 1 - 0.20; // 20% discount
+    }
+    
+    return price * quantity;
+}
+
+// Initial estimated price
+document.getElementById('estimatedPrice').textContent = calculatePrice(5).toFixed(2);
+
+// Listen to changes in input field and update estimated price accordingly
+document.getElementById('questionsCount').addEventListener('input', function(e) {
+    const quantity = parseInt(e.target.value, 10);
+    const estimated = calculatePrice(quantity);
+    document.getElementById('estimatedPrice').textContent = estimated.toFixed(2);
+});
+</script>
+
+
+    <!-- PayPal SDK Script -->
+    <script src="https://www.paypal.com/sdk/js?client-id=test&currency=EUR"></script>
+    <script>
+    
+    window.paypal
+    .Buttons({
+         async createOrder() {
+        // Fetch the number of questions entered by the user
+        const numberOfQuestions = document.getElementById('questionsCount').value;
+        
+        try {
+            const response = await fetch("/api/orders", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                // Pass the number of questions as quantity to the backend
+                body: JSON.stringify({
+                    cart: [
+                        {
+                            id: "Questions",
+                            quantity: numberOfQuestions,
+                        },
+                    ],
+                }),
+            });
+                const orderData = await response.json();
+
+                if (orderData.id) {
+                    return orderData.id;
+                } else {
+                    const errorDetail = orderData?.details?.[0];
+                    const errorMessage = errorDetail
+                        ? `${errorDetail.issue} ${errorDetail.description} (${orderData.debug_id})`
+                        : JSON.stringify(orderData);
+
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                console.error(error);
+                resultMessage(`Could not initiate PayPal Checkout...<br><br>${error}`);
+            }
+        },
+        async onApprove(data, actions) {
+            try {
+                const response = await fetch(`/api/orders/${data.orderID}/capture`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },    body: JSON.stringify({
+        quantity: document.getElementById('questionsCount').value
+    })
+               
+                });
+
+                const orderData = await response.json();
+                // Three cases to handle:
+                //   (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                //   (2) Other non-recoverable errors -> Show a failure message
+                //   (3) Successful transaction -> Show confirmation or thank you message
+
+                const errorDetail = orderData?.details?.[0];
+
+                if (errorDetail?.issue === "INSTRUMENT_DECLINED") {
+                    // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                    // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
+                    return actions.restart();
+                } else if (errorDetail) {
+                    // (2) Other non-recoverable errors -> Show a failure message
+                    throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
+                } else if (!orderData.purchase_units) {
+                    throw new Error(JSON.stringify(orderData));
+                } else {
+                    // (3) Successful transaction -> Show confirmation or thank you message
+                    // Or go to another URL:  actions.redirect('thank_you.html');
+                    const transaction =
+                        orderData?.purchase_units?.[0]?.payments?.captures?.[0] ||
+                        orderData?.purchase_units?.[0]?.payments?.authorizations?.[0];
+                    resultMessage(
+                        `Transaction ${transaction.status}: ${transaction.id}<br><br>See console for all available details`,
+                    );
+                    console.log(
+                        "Capture result",
+                        orderData,
+                        JSON.stringify(orderData, null, 2),
+                    );
+                    
+                    window.location.href = '/';  // Redirect to the index page
+
+                }
+            } catch (error) {
+                console.error(error);
+                resultMessage(
+                    `Sorry, your transaction could not be processed...<br><br>${error}`,
+                );
+            }
+        },
+    })
+    .render("#paypal-button-container");
+
+// Example function to show a result to the user. Your site's UI library can be used instead.
+function resultMessage(message) {
+    const container = document.querySelector("#result-message");
+    container.innerHTML = message;
+}
+
+    
+    </script>
+
+
+
 <style>
     .price-table {
         width: 100%;
@@ -84,7 +265,7 @@
     </tbody>
 </table>
 
-    <a href="https://t.me/CryptoFreddy123" target="_blank" class="bg-blue-500 text-white p-2 rounded-md">Message on Telegram</a>
+    <a href="https://t.me/CryptoFreddy123" target="_blank" class="bg-blue-500 text-white p-2 rounded-md">Message Us</a>
 </section>
 <%- include('partials/footer') -%>
 
