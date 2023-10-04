@@ -11,6 +11,18 @@ const userSchema = new Schema({
         type: Number,
         default: 0
     },
+    referralQty: {
+        type: Number,
+        default: 0
+    },
+    referralCode: {
+        type: String,
+        required: false
+    },
+    referralCodeInUse: {
+        type: String,
+        required: false
+    },
     history: [{
         question: {
             type: String,

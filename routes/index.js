@@ -5,6 +5,8 @@ const multer = require('multer');
 const vision = require('@google-cloud/vision');
 const User = require('../models/user.js');
 const { OpenAI } = require('openai');
+
+
 const mongoose = require('mongoose');
 let fetch;
 import('node-fetch').then(module => {
@@ -37,6 +39,24 @@ const base = "https://api-m.sandbox.paypal.com";
 const openai = new OpenAI({
     apiKey: API_KEY_GPT4
 })
+
+
+rid = require('readable-id')
+
+function generateCode(inputString) {
+    // Split the string by '-'
+    const segments = inputString.split('-');
+
+    // Remove the last segment
+    segments.pop();
+
+    // Append a random number between 1 and 10000
+    const randomNumber = Math.floor(Math.random() * 10000) + 1;
+    segments.push(randomNumber);
+
+    // Join the segments back together
+    return segments.join('-');
+}
 
 
 const incrementUserQuestions = async (userEmail, amount = 1) => {
@@ -273,8 +293,13 @@ router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async
         const generatedText = await sendToOpenAI(fullText);
         console.log(generatedText);
 
-        // If it was successful, decrement the user questions
-        decrementUserQuestions(userEmail, userDeductions);
+        // If the generated text was successful and doesn't include the specific substrings, decrement the user questions
+        const keywords = ["AI", "ARTIFICIAL INTELLIGENCE", "APOLOGIZE", "NO ANSWER"];
+
+        if (!keywords.some(keyword => generatedText.toUpperCase().includes(keyword))) {
+            decrementUserQuestions(userEmail, userDeductions);
+        }
+
         appendHistory(userEmail, fullText, generatedText);
 
         res.status(200).json({ success: true, answer: generatedText });
