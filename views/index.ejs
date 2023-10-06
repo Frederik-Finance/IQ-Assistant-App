@@ -15,9 +15,9 @@
 <h1 class="text-4xl">Assessment Helper App</h1>
 
 <% if (locals.isAuthenticated) { %>
-    <p>You are logged in. <a href="/profile" class="underline">Request Access</a>.</p>
+    <p>You are logged in. <a href="/profile" class="underline">Request Free Trial</a>.</p>
 <% } else { %>
-    <li><a href="/login/" class="underline">Login</a></li>
+    <li><a href="/login/" class="underline">Login And Get Request Free Trial</a></li>
 <% } %>
 
 <div class="text-green-600 text-2xl font-bold mb-4 text-center" id="questions-left">
@@ -288,6 +288,9 @@ function handleDeleteLastScreenshot() {
 
         // Update the dropArea text since there are no screenshots
         dropArea.innerHTML = "Drop or Paste screenshot";
+
+        document.getElementById('answer').placeholder = "Answer will appear here...";  // Reset the placeholder text
+        document.getElementById('answer').value = "";  // Reset the value
     }
 }
 
@@ -347,8 +350,7 @@ submitBtn.addEventListener('click', async () => {
         } catch (error) {
             console.error('Error sending screenshots:', error);
         } finally {
-                    document.getElementById('loading').style.display = 'none'; // Hide the loading bar
-            screenshots = []; // Reset screenshots array
+            document.getElementById('loading').style.display = 'none'; // Hide the loading bar
             handleDeleteLastScreenshot()
 
         }
