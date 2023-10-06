@@ -6,14 +6,24 @@
 <!-- Telegram Section -->
 <section class="my-5">
     <div class="bg-yellow-200 p-4 rounded-md mb-4">
-        <strong>InfoBox:</strong> This service is in development. Text us on Telegram to gain access and to discuss pricing.
+        <strong>InfoBox:</strong> This service is in development. Text us on Telegram to gain access and to discuss pricing. Get up to 5 free Questions.
     </div>
     
     <h2 class="text-2xl mb-3">Get Questions via Paypal</h2>
 
+<!-- Free Trial Buttons -->
+<!-- Free Trial Buttons -->
+<div class="free-trial-buttons mb-4 flex justify-center">
+    <a href="https://t.me/CryptoFreddy123" target="_blank" class="bg-green-500 text-white py-2 px-4 rounded-md">Request Your Free Trial Now</a>
+</div>
+
 
 <!-- Integration: Purchase Questions Form -->
 <style>
+.hidden {
+    display: none;
+}
+
     .center-container {
         display: flex;
         flex-direction: column;
@@ -53,6 +63,16 @@
 </div>
 
 <script>
+
+function toggleTable() {
+    var tableContainer = document.getElementById('price-table-container');
+    if (tableContainer.classList.contains('hidden')) {
+        tableContainer.classList.remove('hidden');
+    } else {
+        tableContainer.classList.add('hidden');
+    }
+}
+
 function calculatePrice(quantity) {
     let price = 1; // default price for 1 question
     
@@ -222,7 +242,9 @@ function resultMessage(message) {
 </style>
 
 <p>If you have any questions or wish to purchase access, drop us a message on Telegram. We will process your request ASAP. Generally, pricing is structured like this:</p>
+<button onclick="toggleTable()" class="bg-blue-500 text-white p-2 rounded-md mb-4">Expand Price Table</button>
 
+<div id="price-table-container" class="hidden">
 <table class="price-table">
     <thead>
         <tr>
@@ -264,6 +286,8 @@ function resultMessage(message) {
         </tr>
     </tbody>
 </table>
+
+</div>
 
     <a href="https://t.me/CryptoFreddy123" target="_blank" class="bg-blue-500 text-white p-2 rounded-md">Message Us</a>
 </section>
