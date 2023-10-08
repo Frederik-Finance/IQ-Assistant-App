@@ -290,8 +290,9 @@ router.post('/submit-images', upload.array('screenshots'), requiresAuth(), async
 
         console.log(fullText);
 
-        const generatedText = await sendToOpenAI(fullText);
-        console.log(generatedText);
+        let generatedText = await sendToOpenAI(fullText);
+
+        generatedText = fullText + '\n\n' + generatedText
 
         // If the generated text was successful and doesn't include the specific substrings, decrement the user questions
         const keywords = ["AI", "ARTIFICIAL INTELLIGENCE", "APOLOGIZE", "NO ANSWER"];

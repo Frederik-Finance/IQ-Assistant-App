@@ -17,7 +17,7 @@
 <% if (locals.isAuthenticated) { %>
     <p>You are logged in. <a href="/profile" class="underline">Request Free Trial</a>.</p>
 <% } else { %>
-    <li><a href="/login/" class="underline">Login And Get Request Free Trial</a></li>
+    <li><a href="/login/" class="underline">Login And Request Free Trial</a></li>
 <% } %>
 
 <div class="text-green-600 text-2xl font-bold mb-4 text-center" id="questions-left">
@@ -276,7 +276,7 @@ function addScreenshot() {
 
 
 
-function handleDeleteLastScreenshot() {
+function handleDeleteLastScreenshot(deleteAnswer = true) {
     if (screenshots.length > 0) {
         screenshots = []; // Reset the screenshots array to an empty state
         deductions = 0;  // Reset deductions to 0
@@ -289,8 +289,11 @@ function handleDeleteLastScreenshot() {
         // Update the dropArea text since there are no screenshots
         dropArea.innerHTML = "Drop or Paste screenshot";
 
-        document.getElementById('answer').placeholder = "Answer will appear here...";  // Reset the placeholder text
+
+        if(deleteAnswer)
+       { document.getElementById('answer').placeholder = "Answer will appear here...";  // Reset the placeholder text
         document.getElementById('answer').value = "";  // Reset the value
+        }
     }
 }
 
@@ -350,8 +353,8 @@ submitBtn.addEventListener('click', async () => {
         } catch (error) {
             console.error('Error sending screenshots:', error);
         } finally {
+            handleDeleteLastScreenshot(false)
             document.getElementById('loading').style.display = 'none'; // Hide the loading bar
-            handleDeleteLastScreenshot()
 
         }
     });
